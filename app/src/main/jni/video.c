@@ -65,7 +65,7 @@ jint isSemiPlanarYUV(jint colorFormat) {
     }
 }
 
-JNIEXPORT jint Java_org_txkkj_messenger_Utilities_convertVideoFrame(JNIEnv *env, jclass class, jobject src, jobject dest, jint destFormat, jint width, jint height, jint padding, jint swap) {
+JNIEXPORT jint Java_com_example_zhang_tgvideoconver_utils_Utilities_convertVideoFrame(JNIEnv *env, jclass class, jobject src, jobject dest, jint destFormat, jint width, jint height, jint padding, jint swap) {
     if (!src || !dest || !destFormat) {
         return 0;
     }

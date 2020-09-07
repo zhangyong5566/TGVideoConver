@@ -2,7 +2,6 @@ package com.example.zhang.tgvideoconver;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
-import android.content.Intent;
 import android.content.SharedPreferences;
 import android.media.MediaCodec;
 import android.media.MediaCodecInfo;
@@ -10,19 +9,16 @@ import android.media.MediaCodecList;
 import android.media.MediaExtractor;
 import android.media.MediaFormat;
 import android.os.Build;
-import android.util.Log;
 
 import com.example.zhang.tgvideoconver.mp4.InputSurface;
 import com.example.zhang.tgvideoconver.mp4.MP4Builder;
 import com.example.zhang.tgvideoconver.mp4.Mp4Movie;
 import com.example.zhang.tgvideoconver.mp4.OutputSurface;
-import com.example.zhang.tgvideoconver.mp4.VideoInfo;
 import com.example.zhang.tgvideoconver.utils.AndroidUtilities;
 import com.example.zhang.tgvideoconver.utils.Utilities;
 
 import java.io.File;
 import java.nio.ByteBuffer;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 
 /**
@@ -40,7 +36,7 @@ public class MediaController {
     private final Object videoConvertSync = new Object();
     private boolean videoConvertFirstWrite = true;
     private boolean cancelCurrentVideoConversion = false;
-    private ArrayList<VideoInfo> videoConvertQueue = new ArrayList<>();
+    private ArrayList<VideoEditedInfo> videoConvertQueue = new ArrayList<>();
     private static volatile MediaController Instance;
 
     public static MediaController getInstance() {
@@ -59,19 +55,19 @@ public class MediaController {
     public MediaController() {
     }
 
-    private boolean convertVideo(final VideoInfo videoInfo) {
-        String videoPath = videoInfo.getOriginalPath();
-        long startTime = videoInfo.getStartTime();
-        long endTime = videoInfo.getEndTime();
-        int resultWidth = videoInfo.getResultWidth();
-        int resultHeight = videoInfo.getResultHeight();
-        int rotationValue = videoInfo.getRotationValue();
-        int originalWidth = videoInfo.getOriginalWidth();
-        int originalHeight = videoInfo.getOriginalHeight();
-        int framerate = videoInfo.getFramerate();
-        int bitrate = videoInfo.getBitrate();
+    private boolean convertVideo(final VideoEditedInfo videoInfo) {
+        String videoPath = videoInfo.originalPath;
+        long startTime = videoInfo.startTime;
+        long endTime = videoInfo.endTime;
+        int resultWidth = videoInfo.resultWidth;
+        int resultHeight = videoInfo.resultHeight;
+        int rotationValue = videoInfo.rotationValue;
+        int originalWidth = videoInfo.originalWidth;
+        int originalHeight = videoInfo.originalHeight;
+        int framerate = videoInfo.framerate;
+        int bitrate = videoInfo.bitrate;
         int rotateRender = 0;
-        File cacheFile = new File(videoInfo.getAttachPath());
+        File cacheFile = new File(videoInfo.attachPath);
         if (videoPath == null) {
             videoPath = "";
         }
@@ -604,18 +600,18 @@ public class MediaController {
         }
     }
 
-    public void scheduleVideoConvert(VideoInfo videoInfo) {
+    public void scheduleVideoConvert(VideoEditedInfo videoInfo) {
         scheduleVideoConvert(videoInfo, false);
     }
 
-    public boolean scheduleVideoConvert(VideoInfo videoInfo, boolean isEmpty) {
+    public boolean scheduleVideoConvert(VideoEditedInfo videoInfo, boolean isEmpty) {
         if (videoInfo == null) {
             return false;
         }
         if (isEmpty && !videoConvertQueue.isEmpty()) {
             return false;
         } else if (isEmpty) {
-            new File(videoInfo.getAttachPath()).delete();
+            new File(videoInfo.attachPath).delete();
         }
         videoConvertQueue.add(videoInfo);
         if (videoConvertQueue.size() == 1) {
@@ -624,7 +620,7 @@ public class MediaController {
         return true;
     }
 
-    private void didWriteData(VideoInfo videoInfo, final File file, final boolean last, final boolean error) {
+    private void didWriteData(VideoEditedInfo videoInfo, final File file, final boolean last, final boolean error) {
         final boolean firstWrite = videoConvertFirstWrite;
         if (firstWrite) {
             videoConvertFirstWrite = false;
@@ -651,7 +647,7 @@ public class MediaController {
         });
     }
 
-    private long readAndWriteTracks(VideoInfo videoInfo, MediaExtractor extractor, MP4Builder mediaMuxer, MediaCodec.BufferInfo info, long start, long end, File file, boolean needAudio) throws Exception {
+    private long readAndWriteTracks(VideoEditedInfo videoInfo, MediaExtractor extractor, MP4Builder mediaMuxer, MediaCodec.BufferInfo info, long start, long end, File file, boolean needAudio) throws Exception {
         int videoTrackIndex = findTrack(extractor, false);
         int audioTrackIndex = needAudio ? findTrack(extractor, true) : -1;
         int muxerVideoTrackIndex = -1;
@@ -774,7 +770,7 @@ public class MediaController {
             synchronized (videoConvertSync) {
                 cancelCurrentVideoConversion = false;
             }
-            VideoInfo videoInfo = videoConvertQueue.get(0);
+            VideoEditedInfo videoInfo = videoConvertQueue.get(0);
 
             VideoConvertRunnable.runConversion(videoInfo);
             return true;
@@ -785,9 +781,9 @@ public class MediaController {
 
     private static class VideoConvertRunnable implements Runnable {
 
-        private VideoInfo mVideoInfo;
+        private VideoEditedInfo mVideoInfo;
 
-        private VideoConvertRunnable(VideoInfo videoInfo) {
+        private VideoConvertRunnable(VideoEditedInfo videoInfo) {
             mVideoInfo = videoInfo;
         }
 
@@ -796,7 +792,7 @@ public class MediaController {
             MediaController.getInstance().convertVideo(mVideoInfo);
         }
 
-        public static void runConversion(final VideoInfo videoInfo) {
+        public static void runConversion(final VideoEditedInfo videoInfo) {
             new Thread(new Runnable() {
                 @Override
                 public void run() {

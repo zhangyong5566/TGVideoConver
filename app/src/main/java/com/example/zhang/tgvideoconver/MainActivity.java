@@ -2,23 +2,25 @@ package com.example.zhang.tgvideoconver;
 
 import android.Manifest;
 import android.content.pm.PackageManager;
+import android.media.MediaMetadataRetriever;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Environment;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.View;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.example.zhang.tgvideoconver.mp4.VideoInfo;
 import com.example.zhang.tgvideoconver.utils.AndroidUtilities;
+import com.example.zhang.tgvideoconver.utils.VideoUtil;
 
 import java.io.File;
 
 public class MainActivity extends AppCompatActivity implements NotificationCenter.NotificationCenterDelegate {
+
     private static final int WRITE_EXTERNAL_STORAGE = 1;
     private static final int READ_EXTERNAL_STORAGE = 2;
     private TextView mAvailable;
@@ -51,27 +53,30 @@ public class MainActivity extends AppCompatActivity implements NotificationCente
                 Toast.makeText(MainActivity.this, "权限已申请", Toast.LENGTH_SHORT).show();
             }
         }
+
         mAvailable = findViewById(R.id.tv_available);
         mAttachPath = findViewById(R.id.tv_attachPath);
+        System.out.println(System.currentTimeMillis());
+
+        MediaMetadataRetriever retriever = new MediaMetadataRetriever();
+        retriever.setDataSource(MainActivity.this, Uri.fromFile(new File(getSDPath() + "/" + "test_compress.mp4")));
+        int bitrate = Integer.parseInt(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_BITRATE));
+
+
         findViewById(R.id.bt_ok).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
 
-                VideoInfo videoInfo = new VideoInfo.Builder()
-                        .setStartTime(-1)
-                        .setEndTime(-1)
-                        .setResultWidth(640)
-                        .setResultHeight(360)
-                        .setRotationValue(90)
-                        .setOriginalWidth(1920)
-                        .setOriginalHeight(1080)
-                        .setFramerate(29)
-                        .setBitrate(900000)
-                        .setOriginalPath(getSDPath() + "/" + "test.mp4")
-                        .setAttachPath(getSDPath() + "/" + "test_compress.mp4").bulid();
+                VideoEditedInfo compressionSettings = VideoUtil.createCompressionSettings(getSDPath() + "/" + "test.mp4");
+                //原始文件大小
+                long originSize = compressionSettings.estimatedDuration/1000 * bitrate / 8;
+                if (compressionSettings.estimatedSize > originSize) {   //不进行压缩
+                    mAvailable.setText("当前文件不建议压缩");
+                }else {
+                    compressionSettings.attachPath = getSDPath() + "/" + "test_compress.mp4";
+                    MediaController.getInstance().scheduleVideoConvert(compressionSettings);
+                }
 
-
-                MediaController.getInstance().scheduleVideoConvert(videoInfo);
 
 
             }
@@ -120,14 +125,14 @@ public class MainActivity extends AppCompatActivity implements NotificationCente
             AndroidUtilities.runOnUIThread(new Runnable() {
                 @Override
                 public void run() {
-                    Toast.makeText(ApplicationLoader.applicationContext,"压缩失败",Toast.LENGTH_SHORT).show();
+                    Toast.makeText(ApplicationLoader.applicationContext, "压缩失败", Toast.LENGTH_SHORT).show();
                 }
             });
         } else if (id == NotificationCenter.FilePreparingStarted) {
             AndroidUtilities.runOnUIThread(new Runnable() {
                 @Override
                 public void run() {
-                    Toast.makeText(ApplicationLoader.applicationContext,"准备压缩",Toast.LENGTH_SHORT).show();
+                    Toast.makeText(ApplicationLoader.applicationContext, "准备压缩", Toast.LENGTH_SHORT).show();
                 }
             });
 
@@ -140,8 +145,8 @@ public class MainActivity extends AppCompatActivity implements NotificationCente
                 public void run() {
                     mAvailable.setText("压缩大小：" + fileLenght);
                     if (fileLenght == last) {
-                        Toast.makeText(ApplicationLoader.applicationContext,"压缩完成"  ,Toast.LENGTH_SHORT).show();
-                        mAttachPath.setText("压缩后文件路径："+cachePath);
+                        Toast.makeText(ApplicationLoader.applicationContext, "压缩完成", Toast.LENGTH_SHORT).show();
+                        mAttachPath.setText("压缩后文件路径：" + cachePath);
                     }
 
                 }

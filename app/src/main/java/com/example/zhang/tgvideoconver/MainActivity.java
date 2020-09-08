@@ -25,7 +25,10 @@ public class MainActivity extends AppCompatActivity implements NotificationCente
     private static final int READ_EXTERNAL_STORAGE = 2;
     private TextView mAvailable;
     private TextView mAttachPath;
-
+    private VideoEditedInfo mCompressionSettings;
+    private TextView mTvCanclMsg;
+    private TextView mTvRunMsg;
+    private long mStarTime;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -56,7 +59,8 @@ public class MainActivity extends AppCompatActivity implements NotificationCente
 
         mAvailable = findViewById(R.id.tv_available);
         mAttachPath = findViewById(R.id.tv_attachPath);
-        System.out.println(System.currentTimeMillis());
+        mTvRunMsg = findViewById(R.id.tv_runMsg);
+        mTvCanclMsg = findViewById(R.id.tv_canclMsg);
 
         MediaMetadataRetriever retriever = new MediaMetadataRetriever();
         retriever.setDataSource(MainActivity.this, Uri.fromFile(new File(getSDPath() + "/" + "test_compress.mp4")));
@@ -64,21 +68,36 @@ public class MainActivity extends AppCompatActivity implements NotificationCente
 
 
         findViewById(R.id.bt_ok).setOnClickListener(new View.OnClickListener() {
+
+
+
             @Override
             public void onClick(View v) {
 
-                VideoEditedInfo compressionSettings = VideoUtil.createCompressionSettings(getSDPath() + "/" + "test.mp4");
+                mCompressionSettings = VideoUtil.createCompressionSettings(getSDPath() + "/" + "test.mp4");
+                //给一个ID标识
+                mCompressionSettings.id = System.currentTimeMillis();
                 //原始文件大小
-                long originSize = compressionSettings.estimatedDuration/1000 * bitrate / 8;
-                if (compressionSettings.estimatedSize > originSize) {   //不进行压缩
+                long originSize = mCompressionSettings.estimatedDuration / 1000 * bitrate / 8;
+                if (mCompressionSettings.estimatedSize > originSize) {   //不进行压缩
                     mAvailable.setText("当前文件不建议压缩");
-                }else {
-                    compressionSettings.attachPath = getSDPath() + "/" + "test_compress.mp4";
-                    MediaController.getInstance().scheduleVideoConvert(compressionSettings);
+                } else {
+                    mStarTime = System.currentTimeMillis();
+                    mCompressionSettings.attachPath = getSDPath() + "/" + "test_compress.mp4";
+                    MediaController.getInstance().scheduleVideoConvert(mCompressionSettings);
                 }
 
 
+            }
+        });
 
+        findViewById(R.id.bt_cancel).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (mCompressionSettings != null) {
+                    MediaController.getInstance().cancelVideoConvert(mCompressionSettings);
+                    mTvCanclMsg.setText("取消压缩任务ID："+mCompressionSettings.id);
+                }
             }
         });
 
@@ -125,6 +144,7 @@ public class MainActivity extends AppCompatActivity implements NotificationCente
             AndroidUtilities.runOnUIThread(new Runnable() {
                 @Override
                 public void run() {
+                    mCompressionSettings = null;
                     Toast.makeText(ApplicationLoader.applicationContext, "压缩失败", Toast.LENGTH_SHORT).show();
                 }
             });
@@ -132,6 +152,12 @@ public class MainActivity extends AppCompatActivity implements NotificationCente
             AndroidUtilities.runOnUIThread(new Runnable() {
                 @Override
                 public void run() {
+                    if (args.length>1) {
+                        if (args[1] instanceof VideoEditedInfo){
+                            VideoEditedInfo infos = (VideoEditedInfo) args[1];
+                            mTvRunMsg.setText("当前压缩任务ID："+infos.id);
+                        }
+                    }
                     Toast.makeText(ApplicationLoader.applicationContext, "准备压缩", Toast.LENGTH_SHORT).show();
                 }
             });
@@ -145,8 +171,9 @@ public class MainActivity extends AppCompatActivity implements NotificationCente
                 public void run() {
                     mAvailable.setText("压缩大小：" + fileLenght);
                     if (fileLenght == last) {
+                        mCompressionSettings = null;
                         Toast.makeText(ApplicationLoader.applicationContext, "压缩完成", Toast.LENGTH_SHORT).show();
-                        mAttachPath.setText("压缩后文件路径：" + cachePath);
+                        mAttachPath.setText("压缩后文件路径：" + cachePath+"耗时："+(System.currentTimeMillis()-mStarTime)+"毫秒");
                     }
 
                 }

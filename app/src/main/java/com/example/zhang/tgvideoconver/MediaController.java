@@ -600,6 +600,37 @@ public class MediaController {
         }
     }
 
+
+    /**
+     * 取消操作
+     *
+     * @param videoEditedInfo
+     */
+    public void cancelVideoConvert(VideoEditedInfo videoEditedInfo) {
+        if (videoEditedInfo == null) {
+            synchronized (videoConvertSync) {
+                cancelCurrentVideoConversion = true;
+            }
+        } else {
+            if (!videoConvertQueue.isEmpty()) {
+                for (int a = 0; a < videoConvertQueue.size(); a++) {
+                    VideoEditedInfo object = videoConvertQueue.get(a);
+                    if (object.id == videoEditedInfo.id) {
+                        if (a == 0) {
+                            synchronized (videoConvertSync) {
+                                cancelCurrentVideoConversion = true;
+                            }
+                        } else {
+                            videoConvertQueue.remove(a);
+                        }
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+
     public void scheduleVideoConvert(VideoEditedInfo videoInfo) {
         scheduleVideoConvert(videoInfo, false);
     }
@@ -639,7 +670,7 @@ public class MediaController {
                     NotificationCenter.getInstance().postNotificationName(NotificationCenter.FilePreparingFailed, file.toString());
                 } else {
                     if (firstWrite) {
-                        NotificationCenter.getInstance().postNotificationName(NotificationCenter.FilePreparingStarted, file.toString());
+                        NotificationCenter.getInstance().postNotificationName(NotificationCenter.FilePreparingStarted, file.toString(),videoInfo);
                     }
                     NotificationCenter.getInstance().postNotificationName(NotificationCenter.FileNewChunkAvailable, file.toString(), file.length(), last ? file.length() : 0);
                 }

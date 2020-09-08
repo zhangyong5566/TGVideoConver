@@ -63,7 +63,7 @@ public class MainActivity extends AppCompatActivity implements NotificationCente
         mTvCanclMsg = findViewById(R.id.tv_canclMsg);
 
         MediaMetadataRetriever retriever = new MediaMetadataRetriever();
-        retriever.setDataSource(MainActivity.this, Uri.fromFile(new File(getSDPath() + "/" + "test_compress.mp4")));
+        retriever.setDataSource(MainActivity.this, Uri.fromFile(new File(getSDPath() + "/" + "test.mp4")));
         int bitrate = Integer.parseInt(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_BITRATE));
 
 
